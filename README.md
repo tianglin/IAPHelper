@@ -1,4 +1,4 @@
-IAP helper for apple in app purchase. It's using ARC and Block for easy to use. Ready to use with newsstand subscription.
+IAP helper for Apple in app purchases. It uses ARC and blocks for ease of use. Ready to use with newsstand subscriptions.
 
 ##Require
 
@@ -10,6 +10,13 @@ IAP helper for apple in app purchase. It's using ARC and Block for easy to use. 
 
 * Add **IAPHelper** folder to your project.
 * Add **Storekit framework**
+
+### Cocoapod
+
+```
+pod 'IAPHelper'
+```
+
 
 ### Initialize
 
@@ -54,7 +61,7 @@ if(![IAPShare sharedHelper].iap) {
 }];
 ```
 
-### Check Recipt without shared secret
+### Check Receipt without shared secret
 
 ```objc
 [[IAPShare sharedHelper].iap checkReceipt:trans.transactionReceipt onCompletion:^(NSString *response, NSError *error) {
@@ -62,13 +69,13 @@ if(![IAPShare sharedHelper].iap) {
 }];
 ```
 
-###Saving Product Identifier
+### Saving Product Identifier
 
 ```objc
-[[IAPShare sharedHelper].iap provideContent:productIdentifier];
+[[IAPShare sharedHelper].iap provideContentWithTransaction:transaction];
 ```
 
-###Check Already Purchase
+### Check for Previous Purchase
 
 ```objc
 if([[IAPShare sharedHelper].iap isPurchasedProductsIdentifier:@"com.comquas.iap.test"]
@@ -77,12 +84,20 @@ if([[IAPShare sharedHelper].iap isPurchasedProductsIdentifier:@"com.comquas.iap.
 	}
 ```
 
-###Purchased Products
+### Purchased Products
 
 ```objc
 NSLog(@"%@",[IAPShare sharedHelper].iap.purchasedProducts);
 ```
-###Restore Purchase
+
+### Clear Purchases
+
+```objc
+[[IAPShare sharedHelper].iap clearSavedPurchasedProducts];
+[[IAPShare sharedHelper].iap clearSavedPurchasedProductByID:@"com.myproduct.id"];
+```
+
+### Restore Purchase
 
 ```objc
 [[IAPShare sharedHelper].iap restoreProductsWithCompletion:^(SKPaymentQueue *payment, NSError *error) {
@@ -104,7 +119,7 @@ NSLog(@"%@",[IAPShare sharedHelper].iap.purchasedProducts);
 }];
 ```
 
-##Example
+## Example
 
 ```objc
 if(![IAPShare sharedHelper].iap) {
@@ -136,8 +151,8 @@ if(![IAPShare sharedHelper].iap) {
 
                       if([rec[@"status"] integerValue]==0)
                       {
-                      NSString *productIdentifier = trans.payment.productIdentifier;
-                        [[IAPShare sharedHelper].iap provideContent:productIdentifier];
+                      
+                        [[IAPShare sharedHelper].iap provideContentWithTransaction:trans];
                           NSLog(@"SUCCESS %@",response);
                           NSLog(@"Pruchases %@",[IAPShare sharedHelper].iap.purchasedProducts);
                       }

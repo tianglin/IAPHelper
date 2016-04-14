@@ -21,7 +21,7 @@ typedef void (^resoreProductsCompleteResponseBlock) (SKPaymentQueue* payment,NSE
 @interface IAPHelper : NSObject <SKProductsRequestDelegate, SKPaymentTransactionObserver>
 
 @property (nonatomic,strong) NSSet *productIdentifiers;
-@property (nonatomic,strong) NSArray * products;
+@property (nonatomic,strong) NSMutableDictionary * products;// why
 @property (nonatomic,strong) NSMutableSet *purchasedProducts;
 @property (nonatomic,strong) SKProductsRequest *request;
 @property (nonatomic) BOOL production;
@@ -39,5 +39,10 @@ typedef void (^resoreProductsCompleteResponseBlock) (SKPaymentQueue* payment,NSE
 
 - (void)checkReceipt:(NSData*)receiptData AndSharedSecret:(NSString*)secretKey onCompletion:(checkReceiptCompleteResponseBlock)completion;
 
-- (void)provideContent:(NSString *)productIdentifier;
+- (void)provideContentWithTransaction:(SKPaymentTransaction *)transaction;
+
+- (void)provideContent:(NSString *)productIdentifier __deprecated_msg("use provideContentWithTransaction: instead.");
+
+- (void)clearSavedPurchasedProducts;
+- (void)clearSavedPurchasedProductByID:(NSString*)productIdentifier;
 @end

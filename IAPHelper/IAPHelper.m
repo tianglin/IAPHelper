@@ -49,13 +49,21 @@
                 
             }
         }
+        if ([SKPaymentQueue defaultQueue]) {
+            [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
         
-        [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+            self.purchasedProducts = purchasedProducts;
+        }
         
-        self.purchasedProducts = purchasedProducts;
-                        
     }
     return self;
+}
+
+- (void)dealloc
+{
+    if ([SKPaymentQueue defaultQueue]) {
+        [[SKPaymentQueue defaultQueue] removeTransactionObserver:self];
+    }
 }
 
 -(BOOL)isPurchasedProductsIdentifier:(NSString*)productID
@@ -84,7 +92,15 @@
 
 - (void)productsRequest:(SKProductsRequest *)request didReceiveResponse:(SKProductsResponse *)response {
     
-    self.products = response.products;
+    if (!self.products) {
+        self.products = @{}.mutableCopy;
+    }
+    [self.products removeAllObjects];
+    
+    for (SKProduct *product in response.products) {
+        
+        [self.products setObject:product forKey:product.productIdentifier];
+    }
     self.request = nil;
 
     if(_requestProductsBlock) {
@@ -97,6 +113,23 @@
     // TODO: Record the transaction on the server side...    
 }
 
+
+- (void)provideContentWithTransaction:(SKPaymentTransaction *)transaction {
+    
+    NSString* productIdentifier = @"";
+    
+    if (transaction.originalTransaction) {
+        productIdentifier = transaction.originalTransaction.payment.productIdentifier;
+    }
+    else {
+        productIdentifier = transaction.payment.productIdentifier;
+    }
+    
+    [SFHFKeychainUtils storeUsername:productIdentifier andPassword:@"YES" forServiceName:@"IAPHelper" updateExisting:YES error:nil];
+    
+    [_purchasedProducts addObject:productIdentifier];
+}
+
 - (void)provideContent:(NSString *)productIdentifier {
     
     [SFHFKeychainUtils storeUsername:productIdentifier andPassword:@"YES" forServiceName:@"IAPHelper" updateExisting:YES error:nil];
@@ -106,14 +139,30 @@
 
 }
 
+- (void)clearSavedPurchasedProducts {
+    
+    for (NSString * productIdentifier in _productIdentifiers) {
+        [self clearSavedPurchasedProductByID:productIdentifier];
+    }
+    
+}
+- (void)clearSavedPurchasedProductByID:(NSString*)productIdentifier {
+    
+    [SFHFKeychainUtils deleteItemForUsername:productIdentifier andServiceName:@"IAPHelper" error:nil];
+    [_purchasedProducts removeObject:productIdentifier];
+    
+}
+
+
 - (void)completeTransaction:(SKPaymentTransaction *)transaction {
     
   
     
     [self recordTransaction: transaction];
     
-    
-    [[SKPaymentQueue defaultQueue] finishTransaction: transaction];
+    if ([SKPaymentQueue defaultQueue]) {
+        [[SKPaymentQueue defaultQueue] finishTransaction: transaction];
+    }
     
     if(_buyProductCompleteBlock)
     {
@@ -126,12 +175,16 @@
     
     
     [self recordTransaction: transaction];
-    [self provideContent: transaction.originalTransaction.payment.productIdentifier];
-    [[SKPaymentQueue defaultQueue] finishTransaction: transaction];
+    [self provideContentWithTransaction:transaction];
+    
+    if ([SKPaymentQueue defaultQueue]) {
+        [[SKPaymentQueue defaultQueue] finishTransaction: transaction];
+            
 
-    if(_buyProductCompleteBlock!=nil)
-    {
-        _buyProductCompleteBlock(transaction);
+        if(_buyProductCompleteBlock!=nil)
+        {
+            _buyProductCompleteBlock(transaction);
+        }
     }
     
 }
@@ -143,16 +196,19 @@
         NSLog(@"Transaction error: %@ %ld", transaction.error.localizedDescription,(long)transaction.error.code);
     }
 
-    
-    [[SKPaymentQueue defaultQueue] finishTransaction: transaction];
-    if(_buyProductCompleteBlock) {
-        _buyProductCompleteBlock(transaction);
+    if ([SKPaymentQueue defaultQueue]) {
+        [[SKPaymentQueue defaultQueue] finishTransaction: transaction];
+        if(_buyProductCompleteBlock) {
+            _buyProductCompleteBlock(transaction);
+        }
     }
     
 }
 
 - (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray *)transactions
 {
+    
+    
     for (SKPaymentTransaction *transaction in transactions)
     {
         switch (transaction.transactionState)
@@ -177,7 +233,10 @@
     
     self.restoreCompletedBlock = nil;
     SKPayment *payment = [SKPayment paymentWithProduct:productIdentifier];
-    [[SKPaymentQueue defaultQueue] addPayment:payment];
+
+    if ([SKPaymentQueue defaultQueue]) {
+        [[SKPaymentQueue defaultQueue] addPayment:payment];
+    }
 
 }
 
@@ -187,7 +246,12 @@
     self.buyProductCompleteBlock = nil;
     
     self.restoreCompletedBlock = completion;
-    [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
+    if ([SKPaymentQueue defaultQueue]) {
+        [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
+    }
+    else {
+        NSLog(@"Cannot get the default Queue");
+    }
     
     
 }
@@ -209,7 +273,8 @@
             case SKPaymentTransactionStateRestored:
             {
                 [self recordTransaction: transaction];
-                [self provideContent: transaction.originalTransaction.payment.productIdentifier];
+                [self provideContentWithTransaction:transaction];
+                
             }
             default:
                 break;
